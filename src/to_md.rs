@@ -142,6 +142,33 @@ pub fn to_md_with_config(node: Node, config: &ToMdConfig) -> String {
                         tail.push(']');
                     }
                 }
+                Img => {
+                    if let Some(src) = node.attributes.as_ref().and_then(|attrs| attrs.get("src")) {
+                        let src = match src {
+                            AttributeValues::String(s) => percent_encoding::percent_decode_str(&s)
+                                .decode_utf8()
+                                .map(|decoded| decoded.to_string())
+                                .unwrap_or_else(|_| s.to_string()),
+                            _ => src.to_string(),
+                        };
+                    
+                        let alt = node
+                            .attributes
+                            .as_ref()
+                            .and_then(|attrs| attrs.get("alt"))
+                            .map_or_else(String::new, |alt_attr| alt_attr.to_string());
+                    
+                        res.push_str(&format!("![{}", alt));
+                        if src.contains(' ') {
+                            tail.push_str(&format!("](<{}>)\n", src));
+                        } else {
+                            tail.push_str(&format!("]({})\n", src));
+                        }
+                    } else {
+                        res.push_str("![");
+                        tail.push_str("]\n");
+                    }
+                }
                 Ul => {
                     for child in &node.children {
                         res.push_str(&child.leading_spaces());
